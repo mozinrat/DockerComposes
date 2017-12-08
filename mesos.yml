@@ -1,0 +1,94 @@
+version: '2'
+services:
+  zoo1:
+    image: zookeeper:latest
+    hostname: zoo1
+    ports:
+      - "2181:2181"
+    environment:
+        ZOO_MY_ID: 1
+        ZOO_PORT: 2181
+        ZOO_SERVERS: server.1=zoo1:2888:3888
+    volumes:
+      - /Users/rohitverma/dev/data/zk/data:/data
+      - /Users/rohitverma/dev/data/zk/datalog:/datalog
+  mesosmaster:
+    image: mesosphere/mesos-master:1.4.1
+    hostname: mesos-master
+    ports:
+      - "5050:5050"
+    environment:
+      MESOS_PORT: 5050
+      MESOS_ZK: zk://zoo1:2181/mesos
+      MESOS_QUORUM: 1
+      MESOS_REGISTRY: in_memory
+      MESOS_LOG_DIR: /var/log/mesos
+      MESOS_WORK_DIR: /var/tmp/mesos
+      MESOS_CLUSTER: custom
+    volumes:
+      - /Users/rohitverma/dev/data/mesos/log:/var/log/mesos
+      - /Users/rohitverma/dev/data/mesos/tmp:/var/tmp/mesos
+    depends_on:
+      - zoo1
+  mesosslave:
+    image: mesosphere/mesos-agent:1.4.1
+    hostname: mesos-slave
+    privileged: true
+    environment:
+      MESOS_MASTER: zk://zoo1:2181/mesos
+      MESOS_PORT: 5051
+      MESOS_SWITCH_USER: 0
+      MESOS_CONTAINERIZERS: docker,mesos
+      MESOS_LOG_DIR: /tmp/log
+      MESOS_WORK_DIR: /tmp/mesos
+      MESOS_ISOLATOR: cgroups/cpu,cgroups/mem
+      MESOS_SYSTEMD_ENABLE_SUPPORT: 'false'
+    volumes:
+      - /Users/rohitverma/dev/data/mesos/log:/tmp/log
+      - /Users/rohitverma/dev/data/mesos/tmp:/tmp/mesos
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - /sys:/sys
+    depends_on:
+      - zoo1
+  chronos:
+    image: mesosphere/chronos:v3.0.2
+    hostname: chronos
+    ports:
+      - "4400:4400"
+      - "4401:4401"
+    environment:
+      PORT0: 4400
+      PORT1: 4401
+    command: --zk_hosts zoo1:2181 --master zk://zoo1:2181/mesos
+    depends_on:
+      - zoo1
+  # mesosdns:
+  #   image: mesosphere/mesos-dns:latest
+  #   ports:
+  #     - "9000:9000"
+  #   links:
+  #     - zoo1
+  #     - mesosmaster
+  #     - mesosslave
+  #     - chronos
+  #   environment:
+  #     MESOS_ZK: zk://zoo1:2181/mesos
+  zoonavigator-web:
+    image: elkozmon/zoonavigator-web:0.2.1
+    ports:
+     - "8004:8000"
+    environment:
+      API_HOST: "zoonavigator-api"
+      API_PORT: 9000
+    links:
+     - zoonavigator-api
+    depends_on:
+     - zoonavigator-api
+    restart: unless-stopped
+  zoonavigator-api:
+    image: elkozmon/zoonavigator-api:0.2.1
+    environment:
+      SERVER_HTTP_PORT: 9000
+    restart: unless-stopped
+    depends_on:
+      - zoo1
