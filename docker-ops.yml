@@ -1,0 +1,62 @@
+version: '2'
+services:
+  a1:
+    image: ${DOCKER_REGISTRY_ENDPOINT}/${BUILD_PREFIX}-${ENV}-a1:${IMAGE_TAG}
+    environment:
+      ENV: ${ENV}
+      SPRING_PROFILES_ACTIVE: ${ENV}
+    volumes:
+      - /etc/sensu/plugins:/etc/sensu/plugins
+    mem_limit: 6000000000
+    cpu_shares: 1536
+    labels:
+      io.rancher.container.start_once: 'true'
+      com.socialengine.rancher-cron.schedule: '@every 10m'
+      io.rancher.scheduler.affinity:host_label: subnet=frontend
+      io.rancher.scheduler.affinity:container_label_soft_ne: io.rancher.stack_service.name=${RANCHER_STACK_NAME}/aem
+  a2:
+    image: ${DOCKER_REGISTRY_ENDPOINT}/${BUILD_PREFIX}-${ENV}-a2:${IMAGE_TAG}
+    environment:
+      ENV: ${ENV}
+      SPRING_PROFILES_ACTIVE: ${ENV}
+    volumes:
+      - /etc/sensu/plugins:/etc/sensu/plugins
+    mem_limit: 6000000000
+    cpu_shares: 1536
+    labels:
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.affinity:host_label: subnet=frontend
+      io.rancher.scheduler.affinity:container_label_soft_ne: io.rancher.stack_service.name=${RANCHER_STACK_NAME}/c4c
+  a3:
+    image: ${DOCKER_REGISTRY_ENDPOINT}/${BUILD_PREFIX}-${ENV}-a3:${IMAGE_TAG}
+    environment:
+      ENV: ${ENV}
+      SPRING_PROFILES_ACTIVE: ${ENV}
+    volumes:
+      - /etc/sensu/plugins:/etc/sensu/plugins
+    mem_limit: 6000000000
+    cpu_shares: 1536
+    labels:
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.affinity:host_label: subnet=frontend
+      io.rancher.scheduler.affinity:container_label_soft_ne: io.rancher.stack_service.name=${RANCHER_STACK_NAME}/cds
+  a4:
+    image: ${DOCKER_REGISTRY_ENDPOINT}/${BUILD_PREFIX}-${ENV}-a4:${IMAGE_TAG}
+    environment:
+      ENV: ${ENV}
+      SPRING_PROFILES_ACTIVE: ${ENV}
+    volumes:
+      - /etc/sensu/plugins:/etc/sensu/plugins
+      - /mnt1/logs/containers/${RANCHER_STACK_NAME}/pmi-check/app-logs:/mnt1/logs/
+      - rancher-nfs:/shared
+    mem_limit: 6000000000
+    cpu_shares: 1536
+    labels:
+      io.rancher.container.pull_image: always
+      io.rancher.scheduler.affinity:host_label: subnet=frontend
+      io.rancher.scheduler.affinity:container_label_soft_ne: io.rancher.stack_service.name=${RANCHER_STACK_NAME}/pmi-check
+  rancher-cron:
+    labels:
+      io.rancher.container.create_agent: 'true'
+      io.rancher.container.agent.role: environment
+    image: socialengine/rancher-cron:0.2.0
